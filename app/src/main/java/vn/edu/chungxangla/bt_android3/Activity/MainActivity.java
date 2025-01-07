@@ -49,7 +49,6 @@ public class MainActivity extends AppCompatActivity {
     Api api;
     List<Message> messageList = new ArrayList<>();
     MessageAdapter adapter;
-    int dem=0;
     int last_ID;
     private static final String CHANNEL_ID = "my_channel_id";
 
@@ -94,20 +93,14 @@ public class MainActivity extends AppCompatActivity {
                 .baseUrl(BASE_URL) // URL chính xác của API
                 .addConverterFactory(GsonConverterFactory.create()) // Dùng Gson để parse JSON
                 .build();
-
         Api apiService = retrofit.create(Api.class);
-        Call<MessagesModel> call = apiService.listAll();
+        Call<MessagesModel> call = apiService.listAll("list_all");
 
         call.enqueue(new Callback<MessagesModel>() {
             @Override
             public void onResponse(Call<MessagesModel> call, Response<MessagesModel> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     MessagesModel tt = response.body();
-                    Gson gson = new Gson();
-                    String json = gson.toJson(response);
-                    Log.d("json",json);
-                    Toast.makeText(MainActivity.this, json,Toast.LENGTH_LONG).show();
-                    dem=0;
                     if (tt.getOk() == 1) {
                         messageList = tt.getData();
                         adapter = new MessageAdapter(getApplicationContext(), messageList);
@@ -132,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
                 .build();
 
         Api apiService = retrofit.create(Api.class);
-        Call<LastIDModel> call = apiService.lastId();
+        Call<LastIDModel> call = apiService.lastId("last_id");
 
         call.enqueue(new Callback<LastIDModel>() {
             @Override
@@ -169,12 +162,13 @@ public class MainActivity extends AppCompatActivity {
                 .build();
 
         Api apiService = retrofit.create(Api.class);
-        Call<Message> call = apiService.getBody(id);
+        Call<Message> call = apiService.getBody("get_id",id);
 
         call.enqueue(new Callback<Message>() {
             @Override
             public void onResponse(Call<Message> call, Response<Message> response) {
                 if (response.isSuccessful() && response.body() != null) {
+
                     Message newBody = response.body();
                     id_main.setText(newBody.getId());
                     title_main.setText(newBody.getTitle());
