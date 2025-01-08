@@ -1,6 +1,7 @@
 package vn.edu.chungxangla.bt_android3.Api;
 
 import java.util.List;
+import io.reactivex.rxjava3.core.Observable;
 
 import retrofit2.Call;
 import retrofit2.http.GET;
@@ -13,11 +14,13 @@ import vn.edu.chungxangla.bt_android3.Model.MessageModel;
 import vn.edu.chungxangla.bt_android3.Model.MessagesModel;
 
 public interface Api {
-    @POST("android/api.aspx")
-    Call<MessagesModel> listAll(@Query("action") String action);
-    @GET("android/api.aspx")
-    Call<LastIDModel> lastId(@Query("action") String action);
-    @GET("android/api.aspx")
-    Call<Message> getBody(@Query("action") String action, @Query("id") int id);
+    @GET("android/api.aspx?action=list_all")
+    Observable<MessagesModel> listAll(@Query("action") String action);
+
+    @GET("last_id")
+    Observable<LastIDModel> lastId(@Query("action") String action);
+
+    @GET("get_body/{id}")
+    Observable<Message> getBody(@Path("id") int id);
 
 }

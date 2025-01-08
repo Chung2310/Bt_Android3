@@ -49,7 +49,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
     </LinearLayout>
-
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/button"
+        android:background="@color/black"
+        android:text="Reload"
+        android:textColor="@color/white"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"

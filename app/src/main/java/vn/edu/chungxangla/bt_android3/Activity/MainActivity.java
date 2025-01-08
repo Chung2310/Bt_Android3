@@ -1,7 +1,5 @@
 package vn.edu.chungxangla.bt_android3.Activity;
 
-import static vn.edu.chungxangla.bt_android3.utils.Utils.BASE_URL;
-
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -13,11 +11,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatButton;
 import androidx.core.app.NotificationCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -29,6 +29,13 @@ import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -36,19 +43,21 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import vn.edu.chungxangla.bt_android3.Adapter.MessageAdapter;
 import vn.edu.chungxangla.bt_android3.Api.Api;
+import vn.edu.chungxangla.bt_android3.Api.RetrofitClient;
 import vn.edu.chungxangla.bt_android3.Model.LastIDModel;
 import vn.edu.chungxangla.bt_android3.Model.Message;
 import vn.edu.chungxangla.bt_android3.Model.MessageModel;
 import vn.edu.chungxangla.bt_android3.Model.MessagesModel;
 import vn.edu.chungxangla.bt_android3.R;
-import vn.edu.chungxangla.bt_android3.utils.Utils;
 
 public class MainActivity extends AppCompatActivity {
     RecyclerView recyclerView;
     TextView id_main,title_main,body_main,time_main;
+    AppCompatButton button;
     Api api;
     List<Message> messageList = new ArrayList<>();
     MessageAdapter adapter;
+    CompositeDisposable compositeDisposable;
     int last_ID;
     private static final String CHANNEL_ID = "my_channel_id";
 
@@ -62,11 +71,20 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+        api = RetrofitClient.getInstance("https://57kmt.duckdns.org/android/").create(Api.class);
         anhXa();
         listAll();
+        //lastId();
         SharedPreferences sharedPreferences = getSharedPreferences("mypref",MODE_PRIVATE);
         last_ID = sharedPreferences.getInt("lastid",0);
         Handler handler = new Handler(Looper.getMainLooper());
+
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                listAll();
+            }
+        });
 
         Runnable periodicTask = new Runnable() {
             @Override
@@ -85,106 +103,79 @@ public class MainActivity extends AppCompatActivity {
         title_main = findViewById(R.id.title_main);
         body_main = findViewById(R.id.body_main);
         time_main = findViewById(R.id.time_main);
-
+        button = findViewById(R.id.button);
+        compositeDisposable = new CompositeDisposable();
    }
-    private void listAll(){
-        // Tạo Retrofit instance
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(BASE_URL) // URL chính xác của API
-                .addConverterFactory(GsonConverterFactory.create()) // Dùng Gson để parse JSON
-                .build();
-        Api apiService = retrofit.create(Api.class);
-        Call<MessagesModel> call = apiService.listAll("list_all");
-
-        call.enqueue(new Callback<MessagesModel>() {
-            @Override
-            public void onResponse(Call<MessagesModel> call, Response<MessagesModel> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    MessagesModel tt = response.body();
-                    if (tt.getOk() == 1) {
-                        messageList = tt.getData();
-                        adapter = new MessageAdapter(getApplicationContext(), messageList);
-                        recyclerView.setAdapter(adapter);
-
-                    }
-                } else {
-                    System.err.println("Response is empty or unsuccessful");
-                }
-            }
-            @Override
-            public void onFailure(Call<MessagesModel> call, Throwable t) {
-                System.err.println("Error: " + t.getMessage());
-            }
-        });
-    }
-    private void lastId(){
-        // Tạo Retrofit instance
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(BASE_URL) // URL chính xác của API
-                .addConverterFactory(GsonConverterFactory.create()) // Dùng Gson để parse JSON
-                .build();
-
-        Api apiService = retrofit.create(Api.class);
-        Call<LastIDModel> call = apiService.lastId("last_id");
-
-        call.enqueue(new Callback<LastIDModel>() {
-            @Override
-            public void onResponse(Call<LastIDModel> call, Response<LastIDModel> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    LastIDModel tt = response.body();
-                    if (tt.getOk() == 1) {
-                        if(last_ID < tt.getLast_id()){
-                            last_ID = tt.getLast_id();
-                            getBody(last_ID);
-                            SharedPreferences sharedPreferences = getSharedPreferences("mypref",MODE_PRIVATE);
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putInt("lastid",tt.getLast_id());
-                            editor.commit();
+    private void listAll() {
+        compositeDisposable.add(api.listAll("list_all")
+                .subscribeOn(Schedulers.io()) // Xử lý trên luồng nền
+                .observeOn(AndroidSchedulers.mainThread()) // Kết quả trên luồng chính
+                .subscribe(
+                        messagesModel -> {
+                            // Xử lý thành công
+                            if (adapter == null) {
+                                messageList = messagesModel.getData();
+                                adapter = new MessageAdapter(this, messageList);
+                                recyclerView.setAdapter(adapter);
+                            } else {
+                                adapter.notifyDataSetChanged();
+                            }
+                        },
+                        throwable -> {
+                            // Xử lý lỗi
+                            Log.d("loi",throwable.getMessage()+"");
+                            Toast.makeText(MainActivity.this, "Error: " + throwable.getMessage(), Toast.LENGTH_SHORT).show();
                         }
-                        else{
-                            return;
-                        }
+                ));
 
-                    }
-                }
-
-            }
-            @Override
-            public void onFailure(Call<LastIDModel> call, Throwable t) {
-                System.err.println("Error: " + t.getMessage());
-            }
-        });
     }
+
+    private void lastId() {
+        compositeDisposable.add(api.lastId("last_id")
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                        lastIDModel -> {
+                            if (last_ID < lastIDModel.getLast_id()) {
+                                last_ID = lastIDModel.getLast_id();
+                                getBody(last_ID);
+                                SharedPreferences sharedPreferences = getSharedPreferences("mypref", MODE_PRIVATE);
+                                SharedPreferences.Editor editor = sharedPreferences.edit();
+                                editor.putInt("lastid", lastIDModel.getLast_id());
+                                editor.apply();
+                            }
+                        },
+                        throwable -> {
+                            Toast.makeText(MainActivity.this, "Error: " + throwable.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                ));
+    }
+
     private void getBody(int id) {
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
-
-        Api apiService = retrofit.create(Api.class);
-        Call<Message> call = apiService.getBody("get_id",id);
-
-        call.enqueue(new Callback<Message>() {
-            @Override
-            public void onResponse(Call<Message> call, Response<Message> response) {
-                if (response.isSuccessful() && response.body() != null) {
-
-                    Message newBody = response.body();
-                    id_main.setText(newBody.getId());
-                    title_main.setText(newBody.getTitle());
-                    body_main.setText(newBody.getBody());
-                    time_main.setText(newBody.getTime());
-                    showNotification(newBody.getTitle(), newBody.getBody());
-                }
-            }
-
-            @Override
-            public void onFailure(Call<Message> call, Throwable t) {
-                System.err.println("Error: " + t.getMessage());
-            }
-        });
+        compositeDisposable.add(api.getBody(id)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                        message -> {
+                            id_main.setText(message.getId());
+                            title_main.setText(message.getTitle());
+                            body_main.setText(message.getBody());
+                            time_main.setText(message.getTime());
+                            showNotification(message.getTitle(), message.getBody());
+                        },
+                        throwable -> {
+                            Toast.makeText(MainActivity.this, "Error: " + throwable.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                ));
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (compositeDisposable != null && !compositeDisposable.isDisposed()) {
+            compositeDisposable.dispose();
+        }
+    }
     private void showNotification(String title, String body) {
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
