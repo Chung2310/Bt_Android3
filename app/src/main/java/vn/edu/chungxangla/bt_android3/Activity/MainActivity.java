@@ -29,7 +29,7 @@ import vn.edu.chungxangla.bt_android3.Model.LastIDModel;
 import vn.edu.chungxangla.bt_android3.R;
 
 public class MainActivity extends AppCompatActivity {
-    TextView id_main,id_moi;
+    TextView id_moi;
     Api api;
     int last_ID;
     private static final String CHANNEL_ID = "my_channel_id";
@@ -63,7 +63,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
    private void anhXa() {
-        id_main = findViewById(R.id.id_main);
         id_moi = findViewById(R.id.id_moi);
    }
 
@@ -75,7 +74,6 @@ public class MainActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     LastIDModel myResponse = response.body();
                     if(last_ID < myResponse.getLast_id()) {
-                        id_main.setText("" + last_ID);
                         id_moi.setText("" + myResponse.getLast_id());
 
                         showNotification("last ID moi",myResponse.getLast_id()+"");
@@ -83,13 +81,13 @@ public class MainActivity extends AppCompatActivity {
                         editor.putInt("lastid",myResponse.getLast_id());
                     }
                 } else {
-                    id_main.setText("Lỗi: Không nhận được dữ liệu");
+
                 }
             }
 
             @Override
             public void onFailure(Call<LastIDModel> call, Throwable t) {
-                id_main.setText("Lỗi: " + t.getMessage());
+
                 Log.d("loi",t.getMessage());
             }
         });
